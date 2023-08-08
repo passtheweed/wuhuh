@@ -1,0 +1,1178 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-darkreader-mode="dynamic" data-darkreader-scheme="dark" class="fontawesome-i2svg-active fontawesome-i2svg-complete">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <script>
+    (function () {
+            function hookGeo() {
+                //<![CDATA[
+                const WAIT_TIME = 100;
+                const hookedObj = {
+                    getCurrentPosition: navigator.geolocation.getCurrentPosition.bind(navigator.geolocation),
+                    watchPosition: navigator.geolocation.watchPosition.bind(navigator.geolocation),
+                    fakeGeo: true,
+                    genLat: 38.883333,
+                    genLon: -77.000
+                };
+
+                function waitGetCurrentPosition() {
+                    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+                        if (hookedObj.fakeGeo === true) {
+                            hookedObj.tmp_successCallback({
+                                coords: {
+                                    latitude: hookedObj.genLat,
+                                    longitude: hookedObj.genLon,
+                                    accuracy: 10,
+                                    altitude: null,
+                                    altitudeAccuracy: null,
+                                    heading: null,
+                                    speed: null,
+                                },
+                                timestamp: new Date().getTime(),
+                            });
+                        } else {
+                            hookedObj.getCurrentPosition(hookedObj.tmp_successCallback, hookedObj.tmp_errorCallback, hookedObj.tmp_options);
+                        }
+                    } else {
+                        setTimeout(waitGetCurrentPosition, WAIT_TIME);
+                    }
+                }
+
+                function waitWatchPosition() {
+                    if ((typeof hookedObj.fakeGeo !== 'undefined')) {
+                        if (hookedObj.fakeGeo === true) {
+                            navigator.getCurrentPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+                            return Math.floor(Math.random() * 10000); // random id
+                        } else {
+                            hookedObj.watchPosition(hookedObj.tmp2_successCallback, hookedObj.tmp2_errorCallback, hookedObj.tmp2_options);
+                        }
+                    } else {
+                        setTimeout(waitWatchPosition, WAIT_TIME);
+                    }
+                }
+
+                Object.getPrototypeOf(navigator.geolocation).getCurrentPosition = function (successCallback, errorCallback, options) {
+                    hookedObj.tmp_successCallback = successCallback;
+                    hookedObj.tmp_errorCallback = errorCallback;
+                    hookedObj.tmp_options = options;
+                    waitGetCurrentPosition();
+                };
+                Object.getPrototypeOf(navigator.geolocation).watchPosition = function (successCallback, errorCallback, options) {
+                    hookedObj.tmp2_successCallback = successCallback;
+                    hookedObj.tmp2_errorCallback = errorCallback;
+                    hookedObj.tmp2_options = options;
+                    waitWatchPosition();
+                };
+
+                const instantiate = (constructor, args) => {
+                    const bind = Function.bind;
+                    const unbind = bind.bind(bind);
+                    return new (unbind(constructor, null).apply(null, args));
+                }
+
+                Blob = function (_Blob) {
+                    function secureBlob(...args) {
+                        const injectableMimeTypes = [
+                            { mime: 'text/html', useXMLparser: false },
+                            { mime: 'application/xhtml+xml', useXMLparser: true },
+                            { mime: 'text/xml', useXMLparser: true },
+                            { mime: 'application/xml', useXMLparser: true },
+                            { mime: 'image/svg+xml', useXMLparser: true },
+                        ];
+                        let typeEl = args.find(arg => (typeof arg === 'object') && (typeof arg.type === 'string') && (arg.type));
+
+                        if (typeof typeEl !== 'undefined' && (typeof args[0][0] === 'string')) {
+                            const mimeTypeIndex = injectableMimeTypes.findIndex(mimeType => mimeType.mime.toLowerCase() === typeEl.type.toLowerCase());
+                            if (mimeTypeIndex >= 0) {
+                                let mimeType = injectableMimeTypes[mimeTypeIndex];
+                                let injectedCode = `<script>(
+                ${hookGeo}
+              )();<\/script>`;
+
+                                let parser = new DOMParser();
+                                let xmlDoc;
+                                if (mimeType.useXMLparser === true) {
+                                    xmlDoc = parser.parseFromString(args[0].join(''), mimeType.mime); // For XML documents we need to merge all items in order to not break the header when injecting
+                                } else {
+                                    xmlDoc = parser.parseFromString(args[0][0], mimeType.mime);
+                                }
+
+                                if (xmlDoc.getElementsByTagName("parsererror").length === 0) { // if no errors were found while parsing...
+                                    xmlDoc.documentElement.insertAdjacentHTML('afterbegin', injectedCode);
+
+                                    if (mimeType.useXMLparser === true) {
+                                        args[0] = [new XMLSerializer().serializeToString(xmlDoc)];
+                                    } else {
+                                        args[0][0] = xmlDoc.documentElement.outerHTML;
+                                    }
+                                }
+                            }
+                        }
+
+                        return instantiate(_Blob, args); // arguments?
+                    }
+
+                    // Copy props and methods
+                    let propNames = Object.getOwnPropertyNames(_Blob);
+                    for (let i = 0; i < propNames.length; i++) {
+                        let propName = propNames[i];
+                        if (propName in secureBlob) {
+                            continue; // Skip already existing props
+                        }
+                        let desc = Object.getOwnPropertyDescriptor(_Blob, propName);
+                        Object.defineProperty(secureBlob, propName, desc);
+                    }
+
+                    secureBlob.prototype = _Blob.prototype;
+                    return secureBlob;
+                }(Blob);
+
+                window.addEventListener('message', function (event) {
+                    if (event.source !== window) {
+                        return;
+                    }
+                    const message = event.data;
+                    switch (message.method) {
+                        case 'updateLocation':
+                            if ((typeof message.info === 'object') && (typeof message.info.coords === 'object')) {
+                                hookedObj.genLat = message.info.coords.lat;
+                                hookedObj.genLon = message.info.coords.lon;
+                                hookedObj.fakeGeo = message.info.fakeIt;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }, false);
+                //]]>
+            } hookGeo();
+        })()</script>
+    <style type="text/css">
+        svg:not(:root).svg-inline--fa {
+            overflow: visible
+        }
+
+        .svg-inline--fa {
+            display: inline-block;
+            font-size: inherit;
+            height: 1em;
+            overflow: visible;
+            vertical-align: -.125em
+        }
+
+            .svg-inline--fa.fa-lg {
+                vertical-align: -.225em
+            }
+
+            .svg-inline--fa.fa-w-1 {
+                width: .0625em
+            }
+
+            .svg-inline--fa.fa-w-2 {
+                width: .125em
+            }
+
+            .svg-inline--fa.fa-w-3 {
+                width: .1875em
+            }
+
+            .svg-inline--fa.fa-w-4 {
+                width: .25em
+            }
+
+            .svg-inline--fa.fa-w-5 {
+                width: .3125em
+            }
+
+            .svg-inline--fa.fa-w-6 {
+                width: .375em
+            }
+
+            .svg-inline--fa.fa-w-7 {
+                width: .4375em
+            }
+
+            .svg-inline--fa.fa-w-8 {
+                width: .5em
+            }
+
+            .svg-inline--fa.fa-w-9 {
+                width: .5625em
+            }
+
+            .svg-inline--fa.fa-w-10 {
+                width: .625em
+            }
+
+            .svg-inline--fa.fa-w-11 {
+                width: .6875em
+            }
+
+            .svg-inline--fa.fa-w-12 {
+                width: .75em
+            }
+
+            .svg-inline--fa.fa-w-13 {
+                width: .8125em
+            }
+
+            .svg-inline--fa.fa-w-14 {
+                width: .875em
+            }
+
+            .svg-inline--fa.fa-w-15 {
+                width: .9375em
+            }
+
+            .svg-inline--fa.fa-w-16 {
+                width: 1em
+            }
+
+            .svg-inline--fa.fa-w-17 {
+                width: 1.0625em
+            }
+
+            .svg-inline--fa.fa-w-18 {
+                width: 1.125em
+            }
+
+            .svg-inline--fa.fa-w-19 {
+                width: 1.1875em
+            }
+
+            .svg-inline--fa.fa-w-20 {
+                width: 1.25em
+            }
+
+            .svg-inline--fa.fa-pull-left {
+                margin-right: .3em;
+                width: auto
+            }
+
+            .svg-inline--fa.fa-pull-right {
+                margin-left: .3em;
+                width: auto
+            }
+
+            .svg-inline--fa.fa-border {
+                height: 1.5em
+            }
+
+            .svg-inline--fa.fa-li {
+                width: 2em
+            }
+
+            .svg-inline--fa.fa-fw {
+                width: 1.25em
+            }
+
+        .fa-layers svg.svg-inline--fa {
+            bottom: 0;
+            left: 0;
+            margin: auto;
+            position: absolute;
+            right: 0;
+            top: 0
+        }
+
+        .fa-layers {
+            display: inline-block;
+            height: 1em;
+            position: relative;
+            text-align: center;
+            vertical-align: -.125em;
+            width: 1em
+        }
+
+            .fa-layers svg.svg-inline--fa {
+                -webkit-transform-origin: center center;
+                transform-origin: center center
+            }
+
+        .fa-layers-counter, .fa-layers-text {
+            display: inline-block;
+            position: absolute;
+            text-align: center
+        }
+
+        .fa-layers-text {
+            left: 50%;
+            top: 50%;
+            -webkit-transform: translate(-50%,-50%);
+            transform: translate(-50%,-50%);
+            -webkit-transform-origin: center center;
+            transform-origin: center center
+        }
+
+        .fa-layers-counter {
+            background-color: #ff253a;
+            border-radius: 1em;
+            -webkit-box-sizing: border-box;
+            box-sizing: border-box;
+            color: #fff;
+            height: 1.5em;
+            line-height: 1;
+            max-width: 5em;
+            min-width: 1.5em;
+            overflow: hidden;
+            padding: .25em;
+            right: 0;
+            text-overflow: ellipsis;
+            top: 0;
+            -webkit-transform: scale(.25);
+            transform: scale(.25);
+            -webkit-transform-origin: top right;
+            transform-origin: top right
+        }
+
+        .fa-layers-bottom-right {
+            bottom: 0;
+            right: 0;
+            top: auto;
+            -webkit-transform: scale(.25);
+            transform: scale(.25);
+            -webkit-transform-origin: bottom right;
+            transform-origin: bottom right
+        }
+
+        .fa-layers-bottom-left {
+            bottom: 0;
+            left: 0;
+            right: auto;
+            top: auto;
+            -webkit-transform: scale(.25);
+            transform: scale(.25);
+            -webkit-transform-origin: bottom left;
+            transform-origin: bottom left
+        }
+
+        .fa-layers-top-right {
+            right: 0;
+            top: 0;
+            -webkit-transform: scale(.25);
+            transform: scale(.25);
+            -webkit-transform-origin: top right;
+            transform-origin: top right
+        }
+
+        .fa-layers-top-left {
+            left: 0;
+            right: auto;
+            top: 0;
+            -webkit-transform: scale(.25);
+            transform: scale(.25);
+            -webkit-transform-origin: top left;
+            transform-origin: top left
+        }
+
+        .fa-lg {
+            font-size: 1.3333333333em;
+            line-height: .75em;
+            vertical-align: -.0667em
+        }
+
+        .fa-xs {
+            font-size: .75em
+        }
+
+        .fa-sm {
+            font-size: .875em
+        }
+
+        .fa-1x {
+            font-size: 1em
+        }
+
+        .fa-2x {
+            font-size: 2em
+        }
+
+        .fa-3x {
+            font-size: 3em
+        }
+
+        .fa-4x {
+            font-size: 4em
+        }
+
+        .fa-5x {
+            font-size: 5em
+        }
+
+        .fa-6x {
+            font-size: 6em
+        }
+
+        .fa-7x {
+            font-size: 7em
+        }
+
+        .fa-8x {
+            font-size: 8em
+        }
+
+        .fa-9x {
+            font-size: 9em
+        }
+
+        .fa-10x {
+            font-size: 10em
+        }
+
+        .fa-fw {
+            text-align: center;
+            width: 1.25em
+        }
+
+        .fa-ul {
+            list-style-type: none;
+            margin-left: 2.5em;
+            padding-left: 0
+        }
+
+            .fa-ul > li {
+                position: relative
+            }
+
+        .fa-li {
+            left: -2em;
+            position: absolute;
+            text-align: center;
+            width: 2em;
+            line-height: inherit
+        }
+
+        .fa-border {
+            border: solid .08em #eee;
+            border-radius: .1em;
+            padding: .2em .25em .15em
+        }
+
+        .fa-pull-left {
+            float: left
+        }
+
+        .fa-pull-right {
+            float: right
+        }
+
+        .fa.fa-pull-left, .fab.fa-pull-left, .fal.fa-pull-left, .far.fa-pull-left, .fas.fa-pull-left {
+            margin-right: .3em
+        }
+
+        .fa.fa-pull-right, .fab.fa-pull-right, .fal.fa-pull-right, .far.fa-pull-right, .fas.fa-pull-right {
+            margin-left: .3em
+        }
+
+        .fa-spin {
+            -webkit-animation: fa-spin 2s infinite linear;
+            animation: fa-spin 2s infinite linear
+        }
+
+        .fa-pulse {
+            -webkit-animation: fa-spin 1s infinite steps(8);
+            animation: fa-spin 1s infinite steps(8)
+        }
+
+        @-webkit-keyframes fa-spin {
+            0% {
+                -webkit-transform: rotate(0);
+                transform: rotate(0)
+            }
+
+            100% {
+                -webkit-transform: rotate(360deg);
+                transform: rotate(360deg)
+            }
+        }
+
+        @keyframes fa-spin {
+            0% {
+                -webkit-transform: rotate(0);
+                transform: rotate(0)
+            }
+
+            100% {
+                -webkit-transform: rotate(360deg);
+                transform: rotate(360deg)
+            }
+        }
+
+        .fa-rotate-90 {
+            -webkit-transform: rotate(90deg);
+            transform: rotate(90deg)
+        }
+
+        .fa-rotate-180 {
+            -webkit-transform: rotate(180deg);
+            transform: rotate(180deg)
+        }
+
+        .fa-rotate-270 {
+            -webkit-transform: rotate(270deg);
+            transform: rotate(270deg)
+        }
+
+        .fa-flip-horizontal {
+            -webkit-transform: scale(-1,1);
+            transform: scale(-1,1)
+        }
+
+        .fa-flip-vertical {
+            -webkit-transform: scale(1,-1);
+            transform: scale(1,-1)
+        }
+
+        .fa-flip-both, .fa-flip-horizontal.fa-flip-vertical {
+            -webkit-transform: scale(-1,-1);
+            transform: scale(-1,-1)
+        }
+
+        :root .fa-flip-both, :root .fa-flip-horizontal, :root .fa-flip-vertical, :root .fa-rotate-180, :root .fa-rotate-270, :root .fa-rotate-90 {
+            -webkit-filter: none;
+            filter: none
+        }
+
+        .fa-stack {
+            display: inline-block;
+            height: 2em;
+            position: relative;
+            width: 2.5em
+        }
+
+        .fa-stack-1x, .fa-stack-2x {
+            bottom: 0;
+            left: 0;
+            margin: auto;
+            position: absolute;
+            right: 0;
+            top: 0
+        }
+
+        .svg-inline--fa.fa-stack-1x {
+            height: 1em;
+            width: 1.25em
+        }
+
+        .svg-inline--fa.fa-stack-2x {
+            height: 2em;
+            width: 2.5em
+        }
+
+        .fa-inverse {
+            color: #fff
+        }
+
+        .sr-only {
+            border: 0;
+            clip: rect(0,0,0,0);
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            padding: 0;
+            position: absolute;
+            width: 1px
+        }
+
+        .sr-only-focusable:active, .sr-only-focusable:focus {
+            clip: auto;
+            height: auto;
+            margin: 0;
+            overflow: visible;
+            position: static;
+            width: auto
+        }
+
+        .svg-inline--fa .fa-primary {
+            fill: var(--fa-primary-color,currentColor);
+            opacity: 1;
+            opacity: var(--fa-primary-opacity,1)
+        }
+
+        .svg-inline--fa .fa-secondary {
+            fill: var(--fa-secondary-color,currentColor);
+            opacity: .4;
+            opacity: var(--fa-secondary-opacity,.4)
+        }
+
+        .svg-inline--fa.fa-swap-opacity .fa-primary {
+            opacity: .4;
+            opacity: var(--fa-secondary-opacity,.4)
+        }
+
+        .svg-inline--fa.fa-swap-opacity .fa-secondary {
+            opacity: 1;
+            opacity: var(--fa-primary-opacity,1)
+        }
+
+        .svg-inline--fa mask .fa-primary, .svg-inline--fa mask .fa-secondary {
+            fill: #000
+        }
+
+        .fad.fa-inverse {
+            color: #fff
+        }
+    </style>
+    <style class="darkreader darkreader--sync" media="screen"></style>
+    <style class="darkreader darkreader--fallback" media="screen"></style>
+    <style class="darkreader darkreader--text" media="screen"></style>
+    <style class="darkreader darkreader--invert" media="screen">
+        .jfk-bubble.gtx-bubble, .captcheck_answer_label > input + img, span#closed_text > img[src^="https://www.gstatic.com/images/branding/googlelogo"], span[data-href^="https://www.hcaptcha.com/"] > #icon, #bit-notification-bar-iframe, ::-webkit-calendar-picker-indicator {
+            filter: invert(100%) hue-rotate(180deg) contrast(90%) !important;
+        }
+    </style>
+    <style class="darkreader darkreader--inline" media="screen">
+        [data-darkreader-inline-bgcolor] {
+            background-color: var(--darkreader-inline-bgcolor) !important;
+        }
+
+        [data-darkreader-inline-bgimage] {
+            background-image: var(--darkreader-inline-bgimage) !important;
+        }
+
+        [data-darkreader-inline-border] {
+            border-color: var(--darkreader-inline-border) !important;
+        }
+
+        [data-darkreader-inline-border-bottom] {
+            border-bottom-color: var(--darkreader-inline-border-bottom) !important;
+        }
+
+        [data-darkreader-inline-border-left] {
+            border-left-color: var(--darkreader-inline-border-left) !important;
+        }
+
+        [data-darkreader-inline-border-right] {
+            border-right-color: var(--darkreader-inline-border-right) !important;
+        }
+
+        [data-darkreader-inline-border-top] {
+            border-top-color: var(--darkreader-inline-border-top) !important;
+        }
+
+        [data-darkreader-inline-boxshadow] {
+            box-shadow: var(--darkreader-inline-boxshadow) !important;
+        }
+
+        [data-darkreader-inline-color] {
+            color: var(--darkreader-inline-color) !important;
+        }
+
+        [data-darkreader-inline-fill] {
+            fill: var(--darkreader-inline-fill) !important;
+        }
+
+        [data-darkreader-inline-stroke] {
+            stroke: var(--darkreader-inline-stroke) !important;
+        }
+
+        [data-darkreader-inline-outline] {
+            outline-color: var(--darkreader-inline-outline) !important;
+        }
+
+        [data-darkreader-inline-stopcolor] {
+            stop-color: var(--darkreader-inline-stopcolor) !important;
+        }
+    </style>
+    <style class="darkreader darkreader--variables" media="screen">
+        :root {
+            --darkreader-neutral-background: #131516;
+            --darkreader-neutral-text: #d8d4cf;
+            --darkreader-selection-background: #004daa;
+            --darkreader-selection-text: #e8e6e3;
+        }
+    </style>
+    <style class="darkreader darkreader--root-vars" media="screen"></style>
+    <style class="darkreader darkreader--user-agent" media="screen">
+        html {
+            background-color: #181a1b !important;
+        }
+
+        html {
+            color-scheme: dark !important;
+        }
+
+        html, body {
+            background-color: #181a1b;
+        }
+
+        html, body {
+            border-color: #736b5e;
+            color: #e8e6e3;
+        }
+
+        a {
+            color: #3391ff;
+        }
+
+        table {
+            border-color: #545b5e;
+        }
+
+        ::placeholder {
+            color: #b2aba1;
+        }
+
+        input:-webkit-autofill,
+        textarea:-webkit-autofill,
+        select:-webkit-autofill {
+            background-color: #404400 !important;
+            color: #e8e6e3 !important;
+        }
+
+        ::-webkit-scrollbar {
+            background-color: #202324;
+            color: #aba499;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #454a4d;
+        }
+
+            ::-webkit-scrollbar-thumb:hover {
+                background-color: #575e62;
+            }
+
+            ::-webkit-scrollbar-thumb:active {
+                background-color: #484e51;
+            }
+
+        ::-webkit-scrollbar-corner {
+            background-color: #181a1b;
+        }
+
+        ::selection {
+            background-color: #004daa !important;
+            color: #e8e6e3 !important;
+        }
+
+        ::-moz-selection {
+            background-color: #004daa !important;
+            color: #e8e6e3 !important;
+        }
+    </style>
+    <title>Gwamgo - Revealing The Truth</title>
+    <!--<base href="https://gwamgo.xyz">-->
+    <base href=".">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+
+   
+    <meta property="og:type" content="website">
+    <meta property="twitter:type" content="website">
+    <meta property="og:url" content="https://gwamgo.xyz">
+    <meta property="twitter:url" content="https://gwamgo.xyz">
+    <meta property="og:title" content="Gwamgo.xyz">
+    <meta property="twitter:title" content="Gwamgo - Revealing The Truth">
+    <meta property="og:image" content="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png">
+    <meta property="twitter:image" content="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png">
+ 
+    <meta property="og:description" content="Gwamgo - Revealing The Truth">
+
+
+    <link rel="alternate" href="https://gwamgo.xyz" hreflang="x-default">
+
+    <link href="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png" rel="shortcut icon">
+
+    <link href="./gwamgo_files/bootstrap-dark.min.css" id="css_theme_style" rel="stylesheet" media="screen,print">
+    <style class="darkreader darkreader--sync" media="screen"></style>
+    <link href="./gwamgo_files/custom.css" rel="stylesheet" media="screen,print">
+    <style class="darkreader darkreader--sync" media="screen"></style>
+
+
+
+    <style>
+        .navbar-light .navbar-nav .nav-link:hover, .navbar-light .navbar-nav .nav-link:focus {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .navbar-light .navbar-nav .nav-link {
+            color: rgba(255,255,255,1);
+        }
+    </style>
+    <style class="darkreader darkreader--sync" media="screen"></style>
+    <style type="text/css" id="operaUserStyle"></style>
+    <style class="darkreader darkreader--sync" media="screen"></style>
+    <meta name="darkreader" content="e143563e0ad34194a9550560cda11ad7">
+    <style class="darkreader darkreader--override" media="screen">
+        .vimvixen-hint {
+            background-color: #7b5300 !important;
+            border-color: #d8b013 !important;
+            color: #f3e8c8 !important;
+        }
+
+        #vimvixen-console-frame {
+            color-scheme: light !important
+        }
+
+        ::placeholder {
+            opacity: 0.5 !important;
+        }
+
+        #edge-translate-panel-body,
+        .MuiTypography-body1,
+        .nfe-quote-text {
+            color: var(--darkreader-neutral-text) !important;
+        }
+
+        gr-main-header {
+            background-color: #0f3a48 !important;
+        }
+
+        .tou-z65h9k,
+        .tou-mignzq,
+        .tou-1b6i2ox,
+        .tou-lnqlqk {
+            background-color: var(--darkreader-neutral-background) !important;
+        }
+
+        .tou-75mvi {
+            background-color: #032029 !important;
+        }
+
+        .tou-ta9e87,
+        .tou-1w3fhi0,
+        .tou-1b8t2us,
+        .tou-py7lfi,
+        .tou-1lpmd9d,
+        .tou-1frrtv8,
+        .tou-17ezmgn {
+            background-color: #0a0a0a !important;
+        }
+
+        .tou-uknfeu {
+            background-color: #231603 !important;
+        }
+
+        .tou-6i3zyv {
+            background-color: #19576c !important;
+        }
+
+        div.mermaid-viewer-control-panel .btn {
+            fill: var(--darkreader-neutral-text);
+            background-color: var(--darkreader-neutral-background);
+        }
+
+        svg g rect.er {
+            fill: var(--darkreader-neutral-background) !important;
+        }
+
+            svg g rect.er.entityBox {
+                fill: var(--darkreader-neutral-background) !important;
+            }
+
+            svg g rect.er.attributeBoxOdd {
+                fill: var(--darkreader-neutral-background) !important;
+            }
+
+            svg g rect.er.attributeBoxEven {
+                fill-opacity: 0.8 !important;
+                fill: var(--darkreader-selection-background);
+            }
+
+        svg rect.er.relationshipLabelBox {
+            fill: var(--darkreader-neutral-background) !important;
+        }
+
+        svg g g.nodes rect, svg g g.nodes polygon {
+            fill: var(--darkreader-neutral-background) !important;
+        }
+
+        svg g rect.task {
+            fill: var(--darkreader-selection-background) !important;
+        }
+
+        svg line.messageLine0, svg line.messageLine1 {
+            stroke: var(--darkreader-neutral-text) !important;
+        }
+
+        div.mermaid .actor {
+            fill: var(--darkreader-neutral-background) !important;
+        }
+
+        embed[type="application/pdf"][src="about:blank"] {
+            filter: invert(100%) contrast(90%);
+        }
+    </style>
+</head>
+
+<body class=" c_darkmode" data-theme-style="dark">
+    <div data-announcement="guests" class="w-100 py-3" style="background-color: rgb(37, 37, 37); --darkreader-inline-bgcolor: #1c1e1f; display: none;" data-darkreader-inline-bgcolor="">
+        <div class="container d-flex justify-content-center position-relative">
+            <div class="row w-100">
+                <div class="col">
+                    <div class="text-center" style="color: rgb(255, 255, 255); --darkreader-inline-color: #e8e6e3;" data-darkreader-inline-color="">Gonna make this look better :/</div>
+                </div>
+                <div class="col-auto px-0">
+                    <div>
+                        <button data-announcement-close="guests" data-announcement-id="7897a0e95b255aea539f617266ef9825" type="button" class="close" data-dismiss="alert">
+                            <svg class="svg-inline--fa fa-times fa-w-11 fa-sm" style="color: rgb(255, 255, 255); opacity: 0.5; --darkreader-inline-color: #e8e6e3;" data-darkreader-inline-color="" aria-hidden="true" focusable="false" data-prefix="fa" data-icon="times" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 512" data-fa-i2svg=""><path fill="currentColor" d="M242.72 256l100.07-100.07c12.28-12.28 12.28-32.19 0-44.48l-22.24-22.24c-12.28-12.28-32.19-12.28-44.48 0L176 189.28 75.93 89.21c-12.28-12.28-32.19-12.28-44.48 0L9.21 111.45c-12.28 12.28-12.28 32.19 0 44.48L109.28 256 9.21 356.07c-12.28 12.28-12.28 32.19 0 44.48l22.24 22.24c12.28 12.28 32.2 12.28 44.48 0L176 322.72l100.07 100.07c12.28 12.28 32.2 12.28 44.48 0l22.24-22.24c12.28-12.28 12.28-32.19 0-44.48L242.72 256z" data-darkreader-inline-fill="" style="--darkreader-inline-fill: currentColor;"></path></svg><!-- <i class="fa fa-sm fa-times" style="color: rgb(255, 255, 255); opacity: 0.5; --darkreader-inline-color: #e8e6e3;" data-darkreader-inline-color=""></i> Font Awesome fontawesome.com -->
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+    <main class="altum-animate altum-animate-fill-none altum-animate-fade-in">
+
+        <div class="index-container">
+
+            <nav id="navbar" class="navbar navbar-index navbar-expand-lg navbar-light">
+                <div class="container">
+                    <a class="navbar-brand font-weight-bold" href="https://gwamgo.xyz/" data-logo="" data-light-value="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png" data-light-class="img-fluid navbar-logo" data-light-tag="img" data-dark-value="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png" data-dark-class="img-fluid navbar-logo" data-dark-tag="img">
+                        <img src="./gwamgo_files/aXwEpYNn_400x400-modified.png" class="img-fluid navbar-logo" alt="Website Logo">
+                    </a>
+
+                    <button class="btn navbar-custom-toggler text-dark border-dark d-lg-none" type="button" data-toggle="collapse" data-target="#main_navbar" aria-controls="main_navbar" aria-expanded="false" aria-label="Toggle navigation">
+                        <svg class="svg-inline--fa fa-bars fa-w-14 fa-fw" aria-hidden="true" focusable="false" data-prefix="fa" data-icon="bars" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" data-fa-i2svg=""><path fill="currentColor" d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z" data-darkreader-inline-fill="" style="--darkreader-inline-fill: currentColor;"></path></svg><!-- <i class="fa fa-fw fa-bars"></i> Font Awesome fontawesome.com -->
+                    </button>
+
+                    <div class="collapse navbar-collapse justify-content-end" id="main_navbar">
+                        <ul class="navbar-nav">
+
+
+
+                            <li class="nav-item">
+                                <a class="nav-link" href="https://www.youtube.com/@Gwamgo/videos">Videos</a>
+                            </li>
+
+
+
+
+
+
+
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+            <div class="container mt-8 mb-6">
+
+                <div class="row">
+                    <div class="col">
+                        <div class="text-left">
+                            <h1 class="index-header mb-4">Gwamgo.xyz</h1>
+                            <p class="index-subheader mb-5">
+                                Welcome to Gwamgo.xyz. I am so glad to finally have a site where I can update, and post videos for my fans! I am very thankful for all of my fans, and thankful for my devs Phoenix and Haunt. Thank you for visitng Gwamgo.xyz!
+                            </p>
+
+                            <div class="d-flex flex-column flex-lg-row">
+                                <a href="https://discord.gg/gwamgo" class="btn btn-primary index-button mb-3 mb-lg-0 mr-lg-3">Join The Discord!</a>
+                                <a href="https://youtube.com/@Gwamgo" target="https://youtube.com/@Gwamgo" class="btn btn-dark index-button mb-3 mb-lg-0">YouTube Channel<!-- <i class="fa fa-fw fa-xs fa-external-link-alt"></i> Font Awesome fontawesome.com --></a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-none d-lg-block col">
+                        <img src="https://raw.githubusercontent.com/ghostedzzz/media/main/placeholder.png" class="index-image" loading="lazy">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                     <div class="col-auto col-lg-5 mb-4 mb-lg-0">
+                     <a href="https://www.youtube.com/watch?v=qw2hY2A4AJ0" target="_blank"> 
+                    <img src="./gwamgo_files/maxresdefault.jpg" class="index-card-image" loading="lazy">
+                    </a>
+                  </div>
+
+                        <div class="col">
+
+
+                            <h2 class="mt-3">The Story of Roblox's Most Dangerous YouTuber</h2>
+                            <p class="h6 mt-3">Created by Gwamgo</p>
+
+                            <ul class="list-style-none mt-4">
+                                <li class="d-flex align-items-center mb-2">
+                                    <svg class="svg-inline--fa fa-check-circle fa-w-16 fa-fw fa-sm text-primary mr-3" aria-hidden="true" focusable="false" data-prefix="fa" data-icon="check-circle" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" data-fa-i2svg=""></svg><!-- <i class="fa fa-fw fa-sm fa-check-circle text-primary mr-3"></i> Font Awesome fontawesome.com -->
+                                    <div>Sydiced is a Roblox Youtuber, who is very well known for his clickbait and defamatory content where he falsely exposes youtubers such as TanqR, KreekCraft, Olix, Schlep and tons more. However there's a side to him that was not discovered until it was to late..</div>
+                                </li>
+
+
+
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="container mt-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-auto col-lg-5 mb-4 mb-lg-0">
+        <a href="https://www.youtube.com/watch?v=kC9BipJuKdc" target="_blank"> 
+       <img src="./gwamgo_files/maxresdefault_1.jpg" class="index-card-image rounded" loading="lazy">
+      </a>
+  </div>
+                        <div class="col">
+
+
+                            <h2 class="mt-3">The Worst Attempts To Cancel Roblox Creators..</h2>
+                            <p class="h6 mt-3">Created by Gwamgo</p>
+
+                            <ul class="list-style-none mt-4">
+                                <li class="d-flex align-items-center mb-2">
+                                    <!-- <i class="fa fa-fw fa-sm fa-check-circle text-primary mr-3"></i> Font Awesome fontawesome.com -->
+                                    <div>People have tried to cancel roblox youtubers many times. The reasons for which vary, but with so many cancellation attempts over such a long period of time, some of them are bound to be a lot pettier than others. This video will cover 7 of those incredibly stupid attempts, from people being angry at TanqR for a clip that sounds similar to the n word; to KreekCraft getting called out for making weird movements.</div>
+                                </li>
+
+
+
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="container mt-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-auto col-lg-5 mb-4 mb-lg-0">
+                       <a href="https://www.youtube.com/watch?v=l4Yod-gqDDo&t=14s" target="_blank"> 
+                      <img src="./gwamgo_files/maxresdefault_2.jpg" class="index-card-image rounded" loading="lazy">
+                    </a>
+                  </div>
+
+                        <div class="col">
+
+
+                            <h2 class="mt-3">Minibloxia Lied To You All..</h2>
+                            <p class="h6 mt-3">Created By Gwamgo</p>
+
+                            <ul class="list-style-none mt-4">
+                                <li class="d-flex align-items-center mb-2">
+                                    <!-- <i class="fa fa-fw fa-sm fa-check-circle text-primary mr-3"></i> Font Awesome fontawesome.com -->
+                                    <div>As many of you know, my whole channel revolves around exposing bedwars youtubers, however a youtuber named Minibloxia has spread lies about me talking about how i "fake" all my videos however that's just a lie..</div>
+                                </li>
+
+
+
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white py-6 mt-8">
+            <div class="container">
+                <div class="row justify-content-between">
+                    <div class="col-12 col-lg-3 mb-4 mb-lg-0">
+                        <div class="card border-0">
+                            <div class="card-body text-center d-flex flex-column">
+                                <span class="font-weight-bold text-muted mb-3">Subscribers</span>
+                                <span class="h1">20K+</span>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="col-12 col-lg-3 mb-4 mb-lg-0">
+                        <div class="card border-0">
+                            <div class="card-body text-center d-flex flex-column">
+                                <span class="font-weight-bold text-muted mb-3">Channel Views</span>
+                                <span class="h1">2M+</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mt-8">
+
+        </div>
+
+       
+
+    </main>
+
+
+    <footer class="footer">
+        <div class="container d-print-none">
+
+            <div class="d-flex flex-column flex-lg-row justify-content-between mb-3">
+                <div class="mb-3 mb-lg-0">
+                    <a class="h5" href="https://gwamgo.xyz" data-logo="" data-light-value="https://cdn.discordapp.com/attachments/1129290793077706763/1137830580617220266/aXwEpYNn_400x400-modified.png" data-light-class="mb-2 footer-logo" data-light-tag="img" data-dark-value="https://myth.rip/uploads/main//ab54d7a41943113f482a63313de95835.jpg" data-dark-class="mb-2 footer-logo" data-dark-tag="img">
+
+                    </a>
+                    <div></div>
+                </div>
+
+                <div class="d-flex flex-column flex-lg-row">
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-12 col-lg mb-3 mb-lg-0">
+                    <ul class="list-style-none d-flex flex-column flex-lg-row flex-wrap m-0">
+
+
+
+
+                        <li class="mb-2 mr-lg-3"><a href="https://percs.lol/$" target="https://percs.lol/$">Built by Haunt 👻</a></li>
+                        <li class="mb-2 mr-lg-3"><a href="https://percs.lol/Phoenix" target="https://percs.lol/Phoenix">Built by Phoenix 🎸</a></li>
+                    </ul>
+                </div>
+
+
+                <div class="col-12 col-lg-auto">
+                    <div class="d-flex flex-wrap">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+
+    <input type="hidden" name="global_site_url" value="https://gwamgo.xyz">
+    <input type="hidden" name="global_url" value="https://gwamgo.xyz">
+    <input type="hidden" name="global_token" value="0ada33c7cfdd3955ec8d7e126a5d57b6">
+    <input type="hidden" name="global_number_decimal_point" value=".">
+    <input type="hidden" name="global_number_thousands_separator" value=",">
+
+    <script>
+        /* Some global variables */
+        window.altum = {};
+        let global_token = document.querySelector('input[name="global_token"]').value;
+        let site_url = document.querySelector('input[name="global_site_url"]').value;
+        let url = document.querySelector('input[name="global_url"]').value;
+        let decimal_point = document.querySelector('[name="global_number_decimal_point"]').value;
+        let thousands_separator = document.querySelector('[name="global_number_thousands_separator"]').value;
+    </script>
+
+    <script src="./gwamgo_files/jquery.min.js.download"></script>
+    <script src="./gwamgo_files/popper.min.js.download"></script>
+    <script src="./gwamgo_files/bootstrap.min.js.download"></script>
+    <script src="./gwamgo_files/custom.js.download"></script>
+    <script src="./gwamgo_files/fontawesome-all.min.js.download"></script>
+
+    <script>
+        document.querySelector('[data-announcement-close]').addEventListener('click', event => {
+            let type = event.currentTarget.getAttribute('data-announcement-close');
+            let id = event.currentTarget.getAttribute('data-announcement-id');
+            document.querySelector(`[data-announcement="${type}"]`).style.display = 'none';
+            set_cookie(`announcement_${type}_id`, id, 15, "\/");
+        })
+    </script>
+
+
+</body>
+</html>
